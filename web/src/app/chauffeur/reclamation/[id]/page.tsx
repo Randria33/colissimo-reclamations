@@ -414,12 +414,12 @@ export default function TicketDetailPage() {
             </div>
 
             {/* Action attendue */}
-            {reclamation.action_attendue && (
+            {reclamation.action_commentaire && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-3">Action à réaliser</h3>
                 <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
                   <p className="text-base font-bold text-gray-900">
-                    {reclamation.action_attendue}
+                    {reclamation.action_commentaire}
                   </p>
                 </div>
               </div>

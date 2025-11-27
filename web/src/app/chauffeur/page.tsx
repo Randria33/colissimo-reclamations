@@ -199,10 +199,10 @@ export default function ChauffeurPage() {
                   </div>
 
                   {/* Action attendue - Information clé */}
-                  {rec.action_attendue && (
+                  {rec.action_commentaire && (
                     <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
                       <p className="text-sm font-medium text-gray-700 mb-1">Action à réaliser</p>
-                      <p className="text-base text-gray-900 font-medium">{rec.action_attendue}</p>
+                      <p className="text-base text-gray-900 font-medium">{rec.action_commentaire}</p>
                     </div>
                   )}
 
