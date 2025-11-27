@@ -44,7 +44,14 @@ export default function EditReclamationPage() {
         .single()
 
       if (error) {
-        console.error('Erreur:', error)
+        console.error('Erreur de chargement:', error.message || error)
+        alert('Réclamation introuvable: ' + (error.message || 'Erreur inconnue'))
+        router.push('/dashboard')
+        return
+      }
+
+      if (!data) {
+        console.error('Aucune donnée retournée')
         alert('Réclamation introuvable')
         router.push('/dashboard')
         return
