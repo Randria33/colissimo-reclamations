@@ -3,18 +3,20 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Navbar from '@/components/Navbar'
-import { Plus, Search, Clock, CheckCircle, AlertCircle, Eye } from 'lucide-react'
+import { Search, Clock, CheckCircle, AlertCircle, MessageSquare, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { Database } from '@/types/database.types'
 
-type Reclamation = Database['public']['Tables']['reclamations']['Row']
+type Reclamation = Database['public']['Tables']['reclamations']['Row'] & {
+  unread_messages?: number
+}
 
 export default function ChauffeurPage() {
   const [reclamations, setReclamations] = useState<Reclamation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [stats, setStats] = useState({
-    assignees: 0,
+    total: 0,
     en_cours: 0,
     terminees: 0,
   })
@@ -33,10 +35,23 @@ export default function ChauffeurPage() {
         return
       }
 
+      // Récupérer le circuit du chauffeur
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('circuit')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile?.circuit) {
+        setLoading(false)
+        return
+      }
+
+      // Récupérer les réclamations du circuit
       const { data, error } = await supabase
         .from('reclamations')
         .select('*')
-        .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`)
+        .eq('circuit', profile.circuit)
         .order('date_remise_reclamation', { ascending: false })
 
       if (error) {
@@ -47,7 +62,7 @@ export default function ChauffeurPage() {
         setReclamations(recs)
 
         setStats({
-          assignees: recs.filter(r => r.assigned_to === user.id && r.statut !== 'cloture').length,
+          total: recs.filter(r => r.statut !== 'cloture').length,
           en_cours: recs.filter(r => r.statut === 'en_cours').length,
           terminees: recs.filter(r => r.statut === 'cloture').length,
         })
@@ -62,7 +77,8 @@ export default function ChauffeurPage() {
 
   const filteredReclamations = reclamations.filter(rec =>
     rec.num_colis.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rec.ref_dossier.toLowerCase().includes(searchQuery.toLowerCase())
+    rec.ref_dossier.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    rec.adresse_client?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const getStatusBadge = (statut: string) => {
@@ -92,12 +108,18 @@ export default function ChauffeurPage() {
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* En-tête avec statistiques simplifiées */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Tickets</h1>
+          <p className="text-gray-600">Gérez vos réclamations et communiquez avec l'administration</p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Mes réclamations</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.assignees}</p>
+                <p className="text-sm text-gray-600">Tickets actifs</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
               </div>
               <AlertCircle className="w-10 h-10 text-orange-500" />
             </div>
@@ -106,7 +128,7 @@ export default function ChauffeurPage() {
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">En cours</p>
+                <p className="text-sm text-gray-600">En traitement</p>
                 <p className="text-3xl font-bold text-gray-900">{stats.en_cours}</p>
               </div>
               <Clock className="w-10 h-10 text-blue-500" />
@@ -116,7 +138,7 @@ export default function ChauffeurPage() {
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Terminées</p>
+                <p className="text-sm text-gray-600">Résolus</p>
                 <p className="text-3xl font-bold text-gray-900">{stats.terminees}</p>
               </div>
               <CheckCircle className="w-10 h-10 text-green-500" />
@@ -124,93 +146,100 @@ export default function ChauffeurPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Mes Réclamations
-              </h2>
-
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Rechercher..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full md:w-64"
-                  />
-                </div>
-
-                <Link
-                  href="/chauffeur/nouvelle"
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
-                >
-                  <Plus className="w-5 h-5" />
-                  Nouvelle réclamation
-                </Link>
-              </div>
-            </div>
+        {/* Barre de recherche */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Rechercher par numéro de colis, référence ou adresse..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full [color:black]"
+            />
           </div>
+        </div>
 
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="flex items-center justify-center p-12">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : filteredReclamations.length === 0 ? (
-              <div className="text-center p-12">
-                <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">Aucune réclamation</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-200">
-                {filteredReclamations.map((rec) => (
-                  <div key={rec.id} className="p-6 hover:bg-gray-50 transition">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {rec.num_colis}
-                          </h3>
-                          {getStatusBadge(rec.statut)}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
-                          <div>
-                            <span className="font-medium">Référence:</span> {rec.ref_dossier}
-                          </div>
-                          <div>
-                            <span className="font-medium">Circuit:</span> {rec.circuit}
-                          </div>
-                          <div>
-                            <span className="font-medium">Type:</span> {rec.type_reclamation}
-                          </div>
-                          <div>
-                            <span className="font-medium">À clôturer:</span>{' '}
-                            {new Date(rec.date_cloture_avant).toLocaleDateString('fr-FR')}
-                          </div>
-                        </div>
-                        {rec.motif && (
-                          <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                            <span className="font-medium">Motif:</span> {rec.motif}
-                          </p>
-                        )}
+        {/* Liste des tickets en style carte */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center p-12 bg-white rounded-lg shadow">
+              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : filteredReclamations.length === 0 ? (
+            <div className="text-center p-12 bg-white rounded-lg shadow">
+              <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Aucun ticket trouvé</p>
+            </div>
+          ) : (
+            filteredReclamations.map((rec) => (
+              <div key={rec.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900">
+                          Colis: {rec.num_colis}
+                        </h3>
+                        {getStatusBadge(rec.statut)}
                       </div>
-
-                      <Link
-                        href={`/chauffeur/reclamation/${rec.id}`}
-                        className="ml-4 flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        <Eye className="w-5 h-5" />
-                        Voir détails
-                      </Link>
+                      <p className="text-sm text-gray-500">Réf: {rec.ref_dossier}</p>
                     </div>
                   </div>
-                ))}
+
+                  {/* Adresse du client - Information principale */}
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Adresse client</p>
+                        <p className="text-base text-gray-900 mt-1">{rec.adresse_client}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action attendue - Information clé */}
+                  {rec.action_attendue && (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Action à réaliser</p>
+                      <p className="text-base text-gray-900 font-medium">{rec.action_attendue}</p>
+                    </div>
+                  )}
+
+                  {/* Informations complémentaires */}
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">Type:</span>
+                      <span className="text-gray-900 font-medium">{rec.type_reclamation}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">À clôturer avant:</span>
+                      <span className="text-gray-900 font-medium">
+                        {new Date(rec.date_cloture_avant).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Motif si présent */}
+                  {rec.motif && (
+                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Motif</p>
+                      <p className="text-sm text-gray-900">{rec.motif}</p>
+                    </div>
+                  )}
+
+                  {/* Bouton pour ouvrir le ticket et discuter */}
+                  <Link
+                    href={`/chauffeur/reclamation/${rec.id}`}
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    Ouvrir le ticket et discuter avec l'admin
+                  </Link>
+                </div>
               </div>
-            )}
-          </div>
+            ))
+          )}
         </div>
       </div>
     </div>
