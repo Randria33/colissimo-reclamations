@@ -41,8 +41,13 @@ export default function TicketDetailPage() {
 
   useEffect(() => {
     loadTicket()
-    loadMessages()
     loadFichiers()
+    const cleanup = loadMessages()
+    return () => {
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup()
+      }
+    }
   }, [params.id])
 
   useEffect(() => {
@@ -110,6 +115,7 @@ export default function TicketDetailPage() {
           user_role: msg.profiles?.role || 'chauffeur'
         })) || []
 
+        console.log('Messages chargés:', formattedMessages.length, formattedMessages)
         setMessages(formattedMessages)
       }
 
