@@ -42,9 +42,15 @@ export default function TicketDetailPage() {
   useEffect(() => {
     loadTicket()
     loadFichiers()
-    const cleanup = loadMessages()
+
+    let cleanup: (() => void) | undefined
+
+    loadMessages().then((cleanupFn) => {
+      cleanup = cleanupFn
+    })
+
     return () => {
-      if (cleanup && typeof cleanup === 'function') {
+      if (cleanup) {
         cleanup()
       }
     }
@@ -204,7 +210,10 @@ export default function TicketDetailPage() {
         console.error('Erreur envoi:', error.message)
         alert('Erreur lors de l\'envoi du message')
       } else {
+        console.log('Message envoyé avec succès')
         setNewMessage('')
+        // Recharger les messages pour être sûr
+        await loadMessages()
       }
     } catch (error) {
       console.error('Erreur:', error)
