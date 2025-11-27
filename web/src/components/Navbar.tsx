@@ -55,10 +55,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-3">
-            <Truck className="w-8 h-8 text-blue-600" />
+            <div className="w-10 h-10 bg-gray-900 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-sm">RZ</span>
+            </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                Colissimo Réclamations
+                RZ Réclamations
               </h1>
               {profile && (
                 <p className="text-xs text-gray-500">

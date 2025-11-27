@@ -8,12 +8,19 @@ import { LogIn, Truck, ShieldCheck } from 'lucide-react'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loginType, setLoginType] = useState<'admin' | 'chauffeur' | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!loginType) {
+      setError('Veuillez sélectionner votre type de compte (Admin ou Chauffeur)')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -24,16 +31,37 @@ export default function LoginPage() {
         password,
       })
 
-      if (signInError) throw signInError
+      if (signInError) {
+        if (signInError.message.includes('Invalid API key')) {
+          setError('Erreur de configuration. Vérifiez les clés Supabase dans .env.local')
+        } else if (signInError.message.includes('Invalid login credentials')) {
+          setError('Email ou mot de passe incorrect')
+        } else {
+          setError(signInError.message)
+        }
+        return
+      }
 
       if (data.user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', data.user.id)
           .single()
 
-        if (profile?.role === 'admin') {
+        if (profileError) {
+          setError('Profil utilisateur introuvable. Contactez un administrateur.')
+          return
+        }
+
+        // Vérifier que le type de connexion correspond au rôle
+        if (profile?.role !== loginType) {
+          await supabase.auth.signOut()
+          setError(`Ce compte n'est pas un compte ${loginType === 'admin' ? 'administrateur' : 'chauffeur'}`)
+          return
+        }
+
+        if (profile.role === 'admin') {
           router.push('/dashboard')
         } else {
           router.push('/chauffeur')
@@ -56,14 +84,26 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-full mb-4">
-              <Truck className="w-10 h-10 text-white" />
+            <div className="inline-flex items-center justify-center mb-6">
+              <div className="relative w-48 h-48 bg-gray-900 rounded-2xl p-6 flex items-center justify-center">
+                <div className="text-white">
+                  <div className="text-6xl font-bold tracking-tighter">
+                    <span className="block">RZ</span>
+                  </div>
+                  <div className="text-xs tracking-widest mt-2 uppercase">
+                    Roadzenith
+                  </div>
+                  <div className="text-sm italic mt-1 font-light">
+                    Vos valeurs en avant plan
+                  </div>
+                </div>
+              </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Colissimo
+              Gestion des Réclamations
             </h1>
             <p className="text-gray-600">
-              Gestionnaire de Réclamations
+              Colissimo - RoadZenith
             </p>
           </div>
 
@@ -74,6 +114,50 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
+            {/* Sélection du type de compte */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Je suis :
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setLoginType('admin')}
+                  className={`p-4 border-2 rounded-lg transition ${
+                    loginType === 'admin'
+                      ? 'border-blue-600 bg-blue-50'
+                      : 'border-gray-300 hover:border-blue-400'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <ShieldCheck className={`w-8 h-8 ${loginType === 'admin' ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <span className={`font-medium ${loginType === 'admin' ? 'text-blue-600' : 'text-gray-700'}`}>
+                      Admin
+                    </span>
+                    <span className="text-xs text-gray-500">Gestion complète</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLoginType('chauffeur')}
+                  className={`p-4 border-2 rounded-lg transition ${
+                    loginType === 'chauffeur'
+                      ? 'border-green-600 bg-green-50'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <Truck className={`w-8 h-8 ${loginType === 'chauffeur' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <span className={`font-medium ${loginType === 'chauffeur' ? 'text-green-600' : 'text-gray-700'}`}>
+                      Chauffeur
+                    </span>
+                    <span className="text-xs text-gray-500">Suivi terrain</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -83,9 +167,10 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-gray-900"
                 placeholder="votre.email@example.com"
                 required
+                autoComplete="email"
               />
             </div>
 
@@ -98,15 +183,16 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-gray-900"
                 placeholder="••••••••"
                 required
+                autoComplete="current-password"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !loginType}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -122,21 +208,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="grid grid-cols-2 gap-4 text-center text-sm">
-              <div className="flex flex-col items-center gap-2">
-                <ShieldCheck className="w-6 h-6 text-blue-600" />
-                <span className="font-medium text-gray-700">Admin</span>
-                <span className="text-xs text-gray-500">Gestion complète</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <Truck className="w-6 h-6 text-green-600" />
-                <span className="font-medium text-gray-700">Chauffeur</span>
-                <span className="text-xs text-gray-500">Suivi terrain</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="mt-6 text-center text-sm text-gray-600">
