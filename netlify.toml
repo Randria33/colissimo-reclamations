@@ -9,3 +9,5 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  NEXT_PUBLIC_SUPABASE_URL = "https://nvavwpcyjysbpukcgxnm.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52YXZ3cGN5anlzYnB1a2NneG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyMTY5OTgsImV4cCI6MjA3OTc5Mjk5OH0.ReK_8pWq51-PAA9GReQSeU_n8jRS2C4HzccL21yUZp8"
