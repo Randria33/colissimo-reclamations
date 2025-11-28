@@ -14,7 +14,9 @@ import {
   FileText,
   Upload,
   Eye,
-  Edit
+  Edit,
+  Download,
+  X
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Database } from '@/types/database.types'
@@ -26,6 +28,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [circuitFilter, setCircuitFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [showFilters, setShowFilters] = useState(false)
   const [stats, setStats] = useState({
     total: 0,
     en_attente: 0,
@@ -85,11 +90,68 @@ export default function DashboardPage() {
     }
   }
 
-  const filteredReclamations = reclamations.filter(rec =>
-    rec.num_colis.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rec.ref_dossier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rec.adresse_client?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredReclamations = reclamations.filter(rec => {
+    // Recherche textuelle
+    const matchesSearch = searchQuery === '' ||
+      rec.num_colis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.ref_dossier.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.adresse_client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.motif?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.circuit.toString().includes(searchQuery)
+
+    // Filtre par circuit
+    const matchesCircuit = circuitFilter === 'all' || rec.circuit.toString() === circuitFilter
+
+    // Filtre par type
+    const matchesType = typeFilter === 'all' || rec.type_reclamation === typeFilter
+
+    return matchesSearch && matchesCircuit && matchesType
+  })
+
+  const exportToExcel = () => {
+    // Créer les données pour l'export
+    const exportData = filteredReclamations.map(rec => ({
+      'Num Colis': rec.num_colis,
+      'Réf dossier': rec.ref_dossier,
+      'Adresse': rec.adresse_client,
+      'Circuit': rec.circuit,
+      'Type': rec.type_reclamation,
+      'Motif': rec.motif,
+      'Date remise': rec.date_remise_reclamation,
+      'À clôturer avant': rec.date_cloture_avant,
+      'Date retour chauffeur': rec.date_retour_chauffeur || '',
+      'Remarque': rec.remarque || '',
+      'Action/Commentaire': rec.action_commentaire || '',
+      'Statut': rec.statut,
+      'Priorité': rec.priorite
+    }))
+
+    // Convertir en CSV
+    const headers = Object.keys(exportData[0] || {})
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(row =>
+        headers.map(header => {
+          const value = row[header as keyof typeof row]
+          // Échapper les virgules et guillemets
+          return typeof value === 'string' && (value.includes(',') || value.includes('"'))
+            ? `"${value.replace(/"/g, '""')}"`
+            : value
+        }).join(',')
+      )
+    ].join('\n')
+
+    // Télécharger le fichier
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `reclamations_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const getStatusBadge = (statut: string) => {
     const styles = {
@@ -192,7 +254,7 @@ export default function DashboardPage() {
                 Réclamations
               </h2>
 
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col md:flex-row gap-3 flex-wrap">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
@@ -215,6 +277,23 @@ export default function DashboardPage() {
                   <option value="cloture">Clôturé</option>
                 </select>
 
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                  <Filter className="w-5 h-5" />
+                  Filtres avancés
+                </button>
+
+                <button
+                  onClick={exportToExcel}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+                  title="Exporter vers Excel"
+                >
+                  <Download className="w-5 h-5" />
+                  Exporter ({filteredReclamations.length})
+                </button>
+
                 <Link
                   href="/dashboard/nouvelle"
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
@@ -224,6 +303,66 @@ export default function DashboardPage() {
                 </Link>
               </div>
             </div>
+
+            {showFilters && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Circuit
+                    </label>
+                    <select
+                      value={circuitFilter}
+                      onChange={(e) => setCircuitFilter(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">Tous les circuits</option>
+                      <option value="541">541</option>
+                      <option value="542">542</option>
+                      <option value="543">543</option>
+                      <option value="544">544</option>
+                      <option value="545">545</option>
+                      <option value="546">546</option>
+                      <option value="547">547</option>
+                      <option value="548">548</option>
+                      <option value="549">549</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Type de réclamation
+                    </label>
+                    <select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">Tous les types</option>
+                      <option value="Réclamation Locale">Réclamation Locale</option>
+                      <option value="Demande client">Demande client</option>
+                      <option value="Demande transporteur">Demande transporteur</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-end">
+                    <button
+                      onClick={() => {
+                        setCircuitFilter('all')
+                        setTypeFilter('all')
+                        setSearchQuery('')
+                        setStatusFilter('all')
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-white transition"
+                    >
+                      <X className="w-5 h-5" />
+                      Réinitialiser les filtres
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="overflow-x-auto">
