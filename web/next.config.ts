@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -9,6 +8,7 @@ const nextConfig: NextConfig = {
         hostname: 'nvavwpcyjysbpukcgxnm.supabase.co',
       },
     ],
+    unoptimized: true,
   },
 };
 
