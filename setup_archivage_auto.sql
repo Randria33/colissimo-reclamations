@@ -160,7 +160,23 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE VIEW reclamations_avec_archives AS
 SELECT
-  r.*,
+  r.id,
+  r.num_colis,
+  r.ref_dossier,
+  r.adresse_client,
+  r.circuit,
+  r.type_reclamation,
+  r.motif,
+  r.date_remise_reclamation,
+  r.date_cloture_avant,
+  r.date_retour_chauffeur,
+  r.remarque,
+  r.action_commentaire,
+  r.statut,
+  r.priorite,
+  r.created_by,
+  r.created_at,
+  r.updated_at,
   'active' as source
 FROM reclamations r
 UNION ALL
