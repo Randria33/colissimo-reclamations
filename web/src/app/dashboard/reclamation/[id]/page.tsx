@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Navbar from '@/components/Navbar'
 import MessageThread from '@/components/MessageThread'
-import { ArrowLeft, Calendar, Clock, MapPin, FileText, Image as ImageIcon, Download } from 'lucide-react'
+import ActivityTimeline from '@/components/ActivityTimeline'
+import { ArrowLeft, Calendar, Clock, MapPin, FileText, Image as ImageIcon, Download, History } from 'lucide-react'
 import type { Database } from '@/types/database.types'
 
 type Reclamation = Database['public']['Tables']['reclamations']['Row']
@@ -252,6 +253,19 @@ export default function ReclamationDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Historique d'activité */}
+            <div className="bg-white rounded-lg shadow" id="historique">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <History className="w-5 h-5 text-blue-600" />
+                  Historique & Traçabilité
+                </h3>
+              </div>
+              <div className="p-6">
+                <ActivityTimeline reclamationId={params.id as string} />
+              </div>
+            </div>
           </div>
 
           {/* Messagerie */}
