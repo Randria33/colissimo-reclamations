@@ -51,6 +51,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_log_reclamation_creation ON reclamations;
 CREATE TRIGGER trigger_log_reclamation_creation
   AFTER INSERT ON reclamations
   FOR EACH ROW EXECUTE FUNCTION log_reclamation_creation();
@@ -155,6 +156,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_log_reclamation_update ON reclamations;
 CREATE TRIGGER trigger_log_reclamation_update
   AFTER UPDATE ON reclamations
   FOR EACH ROW EXECUTE FUNCTION log_reclamation_update();
@@ -184,6 +186,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_log_document_upload ON fichiers;
 CREATE TRIGGER trigger_log_document_upload
   AFTER INSERT ON fichiers
   FOR EACH ROW EXECUTE FUNCTION log_document_upload();
@@ -218,6 +221,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_log_message_creation ON messages;
 CREATE TRIGGER trigger_log_message_creation
   AFTER INSERT ON messages
   FOR EACH ROW EXECUTE FUNCTION log_message_creation();
