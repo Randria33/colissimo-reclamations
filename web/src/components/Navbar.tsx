@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, Bell, User, Truck, Users, Archive, Home } from 'lucide-react'
+import { LogOut, Bell, User, Truck, Users, Archive, Home, BarChart3 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { Database } from '@/types/database.types'
@@ -87,6 +87,13 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {profile?.role === 'admin' && (
               <>
+                <Link
+                  href="/dashboard/statistiques"
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+                  title="Statistiques & Performance"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                </Link>
                 <Link
                   href="/dashboard/archives"
                   className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"

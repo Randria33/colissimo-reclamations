@@ -16,7 +16,8 @@ import {
   Eye,
   Edit,
   Download,
-  X
+  X,
+  Paperclip
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Database } from '@/types/database.types'
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [circuitFilter, setCircuitFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [showFilters, setShowFilters] = useState(false)
+  const [documentsCount, setDocumentsCount] = useState<Record<string, number>>({})
   const [stats, setStats] = useState({
     total: 0,
     en_attente: 0,
@@ -42,6 +44,7 @@ export default function DashboardPage() {
   useEffect(() => {
     loadReclamations()
     loadStats()
+    loadDocumentsCounts()
   }, [])
 
   const loadReclamations = async () => {
@@ -88,6 +91,29 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Erreur stats:', error)
     }
+  }
+
+  const loadDocumentsCounts = async () => {
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('reclamation_documents')
+        .select('reclamation_id')
+
+      if (data) {
+        const counts: Record<string, number> = {}
+        data.forEach(doc => {
+          counts[doc.reclamation_id] = (counts[doc.reclamation_id] || 0) + 1
+        })
+        setDocumentsCount(counts)
+      }
+    } catch (error) {
+      console.error('Erreur chargement documents:', error)
+    }
+  }
+
+  const viewDocuments = (reclamationId: string) => {
+    window.open(`/dashboard/reclamation/${reclamationId}#documents`, '_blank')
   }
 
   const filteredReclamations = reclamations.filter(rec => {
@@ -451,6 +477,18 @@ export default function DashboardPage() {
                           >
                             <Edit className="w-5 h-5" />
                           </Link>
+                          <button
+                            onClick={() => viewDocuments(rec.id)}
+                            className="relative text-purple-600 hover:text-purple-800"
+                            title="Voir documents"
+                          >
+                            <Paperclip className="w-5 h-5" />
+                            {documentsCount[rec.id] > 0 && (
+                              <span className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                                {documentsCount[rec.id]}
+                              </span>
+                            )}
+                          </button>
                         </div>
                       </td>
                     </tr>
