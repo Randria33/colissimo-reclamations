@@ -47,6 +47,10 @@ export default function DashboardPage() {
     loadDocumentsCounts()
   }, [])
 
+  useEffect(() => {
+    loadReclamations()
+  }, [statusFilter, circuitFilter, typeFilter])
+
   const loadReclamations = async () => {
     try {
       const supabase = createClient()
@@ -57,6 +61,14 @@ export default function DashboardPage() {
 
       if (statusFilter !== 'all') {
         query = query.eq('statut', statusFilter)
+      }
+
+      if (circuitFilter !== 'all') {
+        query = query.eq('circuit', parseInt(circuitFilter))
+      }
+
+      if (typeFilter !== 'all') {
+        query = query.eq('type_reclamation', typeFilter)
       }
 
       const { data, error } = await query
@@ -97,7 +109,7 @@ export default function DashboardPage() {
     try {
       const supabase = createClient()
       const { data } = await supabase
-        .from('reclamation_documents')
+        .from('fichiers')
         .select('reclamation_id')
 
       if (data) {
@@ -117,7 +129,7 @@ export default function DashboardPage() {
   }
 
   const filteredReclamations = reclamations.filter(rec => {
-    // Recherche textuelle
+    // Recherche textuelle uniquement (les filtres statut, circuit, type sont appliqués côté serveur)
     const matchesSearch = searchQuery === '' ||
       rec.num_colis.toLowerCase().includes(searchQuery.toLowerCase()) ||
       rec.ref_dossier.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -125,13 +137,7 @@ export default function DashboardPage() {
       rec.motif?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       rec.circuit.toString().includes(searchQuery)
 
-    // Filtre par circuit
-    const matchesCircuit = circuitFilter === 'all' || rec.circuit.toString() === circuitFilter
-
-    // Filtre par type
-    const matchesType = typeFilter === 'all' || rec.type_reclamation === typeFilter
-
-    return matchesSearch && matchesCircuit && matchesType
+    return matchesSearch
   })
 
   const exportToExcel = () => {
