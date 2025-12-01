@@ -28,6 +28,8 @@ type ReclamationArchive = {
   date_archivage: string
   statut: string
   priorite: string
+  remarque: string | null
+  action_commentaire: string | null
 }
 
 type ArchivageLog = {
