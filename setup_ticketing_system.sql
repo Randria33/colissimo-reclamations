@@ -17,20 +17,10 @@ UPDATE reclamations
 SET ticket_number = 'RZ-' || LPAD(circuit::TEXT, 3, '0') || '-' || TO_CHAR(created_at, 'YYYYMMDD') || '-' || LPAD(SUBSTRING(id::TEXT, 1, 4), 4, '0')
 WHERE ticket_number IS NULL;
 
--- 2. TABLE DES PIÈCES JOINTES
-CREATE TABLE IF NOT EXISTS reclamation_documents (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  reclamation_id UUID REFERENCES reclamations(id) ON DELETE CASCADE NOT NULL,
-  file_name TEXT NOT NULL,
-  file_path TEXT NOT NULL,
-  file_type TEXT NOT NULL,
-  file_size INTEGER,
-  uploaded_by UUID REFERENCES profiles(id) NOT NULL,
-  uploaded_at TIMESTAMPTZ DEFAULT NOW(),
-  description TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_documents_reclamation ON reclamation_documents(reclamation_id);
+-- 2. TABLE DES PIÈCES JOINTES (fichiers)
+-- Note: La table 'fichiers' existe déjà dans le schéma principal
+-- On ajoute juste les index si nécessaire
+CREATE INDEX IF NOT EXISTS idx_fichiers_reclamation ON fichiers(reclamation_id);
 
 -- 3. VUE DES STATISTIQUES PAR CHAUFFEUR
 CREATE OR REPLACE VIEW stats_chauffeurs AS
@@ -194,24 +184,8 @@ CREATE TRIGGER trigger_auto_assign
   FOR EACH ROW EXECUTE FUNCTION auto_assign_to_driver();
 
 -- 9. RLS POUR LES DOCUMENTS
-ALTER TABLE reclamation_documents ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Voir documents des réclamations accessibles"
-  ON reclamation_documents FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM reclamations r
-      WHERE r.id = reclamation_documents.reclamation_id
-      AND (
-        r.circuit IN (SELECT circuit FROM profiles WHERE id = auth.uid() AND role = 'chauffeur') OR
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-      )
-    )
-  );
-
-CREATE POLICY "Upload documents"
-  ON reclamation_documents FOR INSERT
-  WITH CHECK (uploaded_by = auth.uid());
+-- Note: Les RLS pour la table 'fichiers' sont déjà définis dans le schéma principal
+-- On peut ajouter des politiques supplémentaires si nécessaire
 
 -- 10. FONCTION POUR RÉCUPÉRER LES DOCUMENTS
 CREATE OR REPLACE FUNCTION get_reclamation_documents(reclamation_uuid UUID)
@@ -228,18 +202,18 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT
-    d.id,
-    d.file_name,
-    d.file_path,
-    d.file_type,
-    d.file_size,
-    d.uploaded_at,
+    f.id,
+    f.file_name,
+    f.file_path,
+    f.file_type,
+    f.file_size,
+    f.created_at as uploaded_at,
     p.full_name as uploader_name,
-    d.description
-  FROM reclamation_documents d
-  JOIN profiles p ON d.uploaded_by = p.id
-  WHERE d.reclamation_id = reclamation_uuid
-  ORDER BY d.uploaded_at DESC;
+    f.description
+  FROM fichiers f
+  JOIN profiles p ON f.uploaded_by = p.id
+  WHERE f.reclamation_id = reclamation_uuid
+  ORDER BY f.created_at DESC;
 END;
 $$ LANGUAGE plpgsql;
 

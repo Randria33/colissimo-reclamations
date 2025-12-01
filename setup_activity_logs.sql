@@ -185,7 +185,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_log_document_upload
-  AFTER INSERT ON reclamation_documents
+  AFTER INSERT ON fichiers
   FOR EACH ROW EXECUTE FUNCTION log_document_upload();
 
 -- 5. FONCTION POUR LOGGER LES MESSAGES
